@@ -1,0 +1,8 @@
+"AddonInfo"
+{
+    "name" "Photocopy"
+    "version" "$Version$"
+    "author_name" "sk89q"
+    "author_url" "http://www.sk89q.com"
+    "info" "Contraption duplicator"
+}
