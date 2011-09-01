@@ -43,6 +43,78 @@ function CreateClass(parent)
     })
 end
 
+--- Makes sure that the returned value is indeed a Vector. This function
+-- accepts Vectors, tables, and anything else. A vector at 0, 0, 0 will
+-- be returned if the data is invalid.
+-- @param val Value of any type
+-- @return Vector
+function CastVector(val)
+    if type(val) == 'Vector' then
+        return val
+    elseif type(val) == 'table' then
+        return Vector(tonumber(val[1]) or 0,
+                      tonumber(val[2]) or 0,
+                      tonumber(val[3]) or 0)
+    else
+        return Vector(0, 0, 0)
+    end
+end
+
+--- Makes sure that the return value is actually an Angle. This function
+-- accepts Angles, tables, and anything else. An angle of 0, 0, 0 will be
+-- returned in lieu of a valid Angle.
+-- @param val Value
+-- @return Angle
+function CastAngle(val)
+    if type(val) == 'Angle' then
+        return val
+    elseif type(val) == 'table' then
+        return Angle(tonumber(val[1]) or 0,
+                     tonumber(val[2]) or 0,
+                     tonumber(val[3]) or 0)
+    else
+        return Angle(0, 0, 0)
+    end
+end
+
+--- Returns a table for sure.
+-- @param val
+-- @return Table
+function CastTable(val)
+    if type(val) == 'table' then
+        return val
+    else
+        return {}
+    end
+end
+
+--- Runs a function and catches errors, without caring about the return
+-- value of the function. Errors will be raised as a Lua error, but it
+-- will not end execution.
+-- @param f Function to call
+-- @param ... Arguments
+function ProtectedCall(f, ...)
+    local args = {...}
+    local ret, err = pcall(f, unpack(args, 1, table.maxn(args)))
+    if not ret then
+        ErrorNoHalt(err)
+        return false
+    end
+    return true
+end
+
+--- Freeze all the physics objects of an entity.
+-- @param ent
+function FreezeAllPhysObjs(ent)
+    for bone = 0, ent:GetPhysicsObjectCount() - 1 do
+        local physObj = ent:GetPhysicsObjectNum(bone)
+        
+        if physObj:IsValid() then
+            physObj:EnableMotion(false)
+        end
+    end
+end
+
 ------------------------------------------------------------
 -- IterativeProcessor
 ------------------------------------------------------------
