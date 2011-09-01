@@ -318,7 +318,9 @@ function Clipboard:Copy(ent)
                 
                 -- Copy constrained entities
                 for _, constrEnt in pairs(constr.Entity) do
-                    self:Copy(constrEnt.Entity)
+                    if ValidEntity(constrEnt.Entity) then
+                        self:Copy(constrEnt.Entity)
+                    end
                 end
             end
         end
