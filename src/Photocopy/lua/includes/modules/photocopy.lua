@@ -120,6 +120,17 @@ function Clipboard:CopyEntTable(ent)
     end
     entTable.FlexScale = ent:GetFlexScale()
     
+    -- Toybox
+    entTable.ToyboxID = ent:GetToyboxID()
+	
+    -- For entities that are a part of the map
+    -- Ignoring this for now
+    --[[
+    if ent:CreatedByMap() then
+		entTable.MapCreationID = ent:MapCreationID()
+	end
+    ]]--
+    
     if ent.OnEntityCopyTableFinish then
         ent:OnEntityCopyTableFinish(entTable)
     end
