@@ -180,8 +180,8 @@ function IterativeProcessor:SetFinished(finished)
     self.Finished = finished
 end
 
-function IterativeProcessor:Warn(errorCode, ...)
-    self.Warnings[#self.Warnings + 1] = { errorCode, unpack({...}) }
+function IterativeProcessor:Warn(msg, ...)
+    table.insert(self.Warnings, string.format(msg, unpack({...})))
 end
 
 function IterativeProcessor:SetError(err, ...)
