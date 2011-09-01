@@ -16,7 +16,10 @@
 -- 
 -- $Id$
 
-local AdvDupeReader = photocopy.CreateClass(photocopy.Reader)
+local photocopy = require("photocopy")
+local putil = require("photocopy.util")
+
+local AdvDupeReader = putil.CreateClass(photocopy.Reader)
 
 --- Construct the Adv. Dupe reader.
 -- @param data
@@ -259,7 +262,4 @@ function AdvDupeReader:GetOriginPos()
     return Vector(0, 0, 0)
 end
 
-list.Set("PhotocopyFormats", "AdvDupe", {
-    ReaderClass = AdvDupeReader,
-    WriterClass = nil,
-})
+photocopy.RegisterFormat("AdvDupe", AdvDupeReader, PCDWriter)

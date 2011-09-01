@@ -16,6 +16,9 @@
 -- 
 -- $Id$
 
+local photocopy = require("photocopy")
+local putil = require("photocopy.util")
+
 CreateConVar("photocopy_pcd_serialization_rate", "2000", { FCVAR_ARCHIVE })
 CreateConVar("photocopy_pcd_deserialization_rate", "2000", { FCVAR_ARCHIVE })
 
@@ -23,7 +26,7 @@ CreateConVar("photocopy_pcd_deserialization_rate", "2000", { FCVAR_ARCHIVE })
 -- Writer
 ------------------------------------------------------------
 
-local PCDWriter = photocopy.CreateClass(photocopy.Writer)
+local PCDWriter = putil.CreateClass(photocopy.Writer)
 
 --- Construct the Photocopy Dupe writer.
 -- @param data
@@ -335,7 +338,7 @@ AccessorFunc(PCDWriter, "Header", "Header")
 -- Reader
 ------------------------------------------------------------
 
-local PCDReader = photocopy.CreateClass(photocopy.Reader)
+local PCDReader = putil.CreateClass(photocopy.Reader)
 
 --- Construct the PCD reader.
 -- @param data
@@ -667,7 +670,4 @@ end
 
 ------------------------------------------------------------
 
-list.Set("PhotocopyFormats", "PhotocopyDupe", {
-    ReaderClass = PCDReader,
-    WriterClass = PCDWriter,
-})
+photocopy.RegisterFormat("PhotocopyDupe", PCDReader, PCDWriter)
