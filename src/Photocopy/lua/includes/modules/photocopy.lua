@@ -934,7 +934,10 @@ AccessorFunc(Writer, "Output", "Output")
 
 ------------------------------------------------------------
 
+MsgN("Photocopy %Version$ loaded (http://www.sk89q.com/projects/photocopy/)")
+
 local list = file.FindInLua("photocopy/formats/*.lua")
 for _, f in pairs(list) do
+    MsgN("Photocopy: Auto-loading format file: " .. f)
     include("photocopy/formats/" .. f)
 end
