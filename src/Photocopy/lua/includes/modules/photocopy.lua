@@ -106,6 +106,7 @@ function Clipboard:__construct(offset)
     self.EntityData = {}
     self.ConstraintData = {}
     self.ConstraintIndex = {}
+    self.Filter = nil
 end
 
 --- Creates an entity table to work on. This is very similar to
@@ -301,8 +302,13 @@ function Clipboard:Copy(ent)
     end
     if self.EntityData[ent:EntIndex()] then return end
     
+    -- Check filter
+    if self.Filter and not self.Filter:CanCopyEntity(ent) then return end
+    
     -- Build entity data from the entity
-    self.EntityData[ent:EntIndex()] = self:PrepareEntityData(ent)
+    local data = self:PrepareEntityData(ent)
+    if self.Filter and not self.Filter:CanCopyEntityData(data) then return end
+    self.EntityData[ent:EntIndex()] = data
     
     if constraint.HasConstraints(ent) then
         local constraints = constraint.GetTable(ent)
@@ -334,6 +340,7 @@ end
 AccessorFunc(Clipboard, "EntityData", "EntityData")
 AccessorFunc(Clipboard, "ConstraintData", "ConstraintData")
 AccessorFunc(Clipboard, "Offset", "Offset")
+AccessorFunc(Clipboard, "Filter", "Filter")
 
 local function MarkConstraint(ent)
     ent.CreateTime = CurTime()
@@ -404,6 +411,7 @@ function Paster:__construct(clipboard, ply, originPos, originAng)
     
     self.SpawnFrozen = false
     self.NoConstraints = false
+    self.Filter = nil
     self.SpawnRate = GetConVar("photocopy_paste_spawn_rate"):GetInt()
     self.PostSetupRate = GetConVar("photocopy_paste_setup_rate"):GetInt()
     self.ConstrainRate = GetConVar("photocopy_paste_constrain_rate"):GetInt()
@@ -437,23 +445,28 @@ function Paster:CanCreateEntity(entData)
     if type(entData.Class) ~= 'string' then return false end
     if entData.Class == "" then return false end
     
-    return true
+    if not self.Filter then return true end
+    PrintTable(self.Filter)
+    return self.Filter:CanCreateEntity(entData)
 end
 
 --- After the entity is created, this function can be used to undo the entity.
 -- Return true if the entity should continue existing, otherwise return
 -- false to have the entity removed.
+-- @param ply
 -- @param ent
--- @param entData
+-- @param entData entity table
 -- @return Boolean indicating whether the entity can be created
-function Paster:IsAllowedEntity(ent, entData)
-    return true
+function Paster:CanAllowEntity(ent, entData)
+    if not self.Filter then return true end
+    return self.Filter:CanAllowEntity(ent, entData)
 end
 
 --- Check to see whether this constraint can be created. Return false in
 -- this function to disable. The constraint data table can also be modified.
 function Paster:CanCreateConstraint(constrData)
-    return true
+    if not self.Filter then return true end
+    return self.Filter:CanCreateConstraint(constrData)
 end
 
 --- Apply entity modifiers. The duplicator's ApplyEntityModifiers() will
@@ -701,6 +714,7 @@ function Paster:CreateConstraint(constrData)
     if not constrData.Type then return end
     
     if not self:CanCreateConstraint(constrData) then
+        self:Warn("constraint_create_disallowed", constrData.Type, constrData.Index or -1)
         return
     end
     
@@ -883,8 +897,9 @@ function Paster:_Spawn()
         if self:CanCreateEntity(entData) then
             local ent = self:CreateEntity(entData)
             
-            if not self:IsAllowedEntity(ent, entData) then
+            if not self:CanAllowEntity(ent, entData) then
                 ent:Remove()
+                self:Warn("entity_create_disallowed", entData.Class, entIndex)
             elseif ValidEntity(ent) then
                 if ValidEntity(self.HelperEnt) then
                     ent:SetParent(self.HelperEnt)
@@ -899,6 +914,8 @@ function Paster:_Spawn()
                 ent:SetNotSolid(true)
                 putil.FreezeAllPhysObjs(ent)
             end
+        else
+            self:Warn("entity_create_disallowed", entData.Class, entIndex)
         end
     end
 end
@@ -959,6 +976,7 @@ end
 
 AccessorFunc(Paster, "NoConstraints", "NoConstraints", FORCE_BOOL)
 AccessorFunc(Paster, "SpawnFrozen", "SpawnFrozen", FORCE_BOOL)
+AccessorFunc(Paster, "Filter", "Filter")
 
 ------------------------------------------------------------
 -- Reader
@@ -1009,6 +1027,57 @@ function Writer:SetOriginPos(pos) end
 function Writer:SetOriginAngle(pos) end
 
 AccessorFunc(Writer, "Output", "Output")
+
+------------------------------------------------------------
+-- Filter
+------------------------------------------------------------
+
+Filter = putil.CreateClass()
+
+--- Construct the filter.
+function Filter:__construct(offset)
+end
+
+--- Check to make sure that this entity can be copied.
+-- @param ent
+-- @return Boolean indicating whether the entity can be created
+function Filter:CanCopyEntity(ent)
+    return true
+end
+
+--- Check to make sure that this entity can be copied. The passed table can
+-- be modified safely.
+-- @param entData
+-- @return Boolean indicating whether the entity can be created
+function Filter:CanCopyEntityData(entData)
+    return true
+end
+
+--- Check to make sure that this entity can be pasted before actual
+-- entity creation. The passed table can be modified safely.
+-- @param entData
+-- @return Boolean indicating whether the entity can be created
+function Filter:CanCreateEntity(entData)
+    return true
+end
+
+--- After the entity is created, this function can be used to undo the entity.
+-- Return true if the entity should continue existing, otherwise return
+-- false to have the entity removed.
+-- @param ent
+-- @param entData entity table
+-- @return Boolean indicating whether the entity can be created
+function Filter:CanAllowEntity(ent, entData)
+    return true
+end
+
+--- Check to see whether this constraint can be created. Return false in
+-- this function to disable. The constraint data table can also be modified.
+-- @param constrData
+-- @return Boolean indicating whether the entity can be created
+function Filter:CanCreateConstraint(constrData)
+    return true
+end
 
 ------------------------------------------------------------
 
