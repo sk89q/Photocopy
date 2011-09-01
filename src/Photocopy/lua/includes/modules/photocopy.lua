@@ -71,6 +71,9 @@ Clipboard = putil.CreateClass()
 --- Construct the clipboard.
 -- @param offset Offset position
 function Clipboard:__construct(offset)
+    if not offset then
+        error("Offset for copy is required")
+    end
     self.Offset = offset
     self.EntityData = {}
     self.ConstraintData = {}
@@ -239,7 +242,9 @@ end
 --- Adds an entity (and its constrained entities) to this clipboard.
 -- @param ent Entity
 function Clipboard:Copy(ent)
-    if not ValidEntity(ent) then return end
+    if not ValidEntity(ent) then 
+        error("Invalid entity given to copy")
+    end
     if self.EntityData[ent:EntIndex()] then return end
     
     -- Build entity data from the entity
@@ -895,6 +900,10 @@ Reader = putil.CreateClass(putil.IterativeProcessor)
 -- Constructor.
 function Reader:__construct(data)
     putil.IterativeProcessor.__construct(self)
+    
+    if data == nil then
+        error("Photocopy Reader got empty data")
+    end
     
     self.Data = data
     self.Clipboard = nil
