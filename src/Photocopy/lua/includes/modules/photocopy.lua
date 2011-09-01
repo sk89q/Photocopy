@@ -24,6 +24,10 @@ local IsValidModel = util.IsValidModel
 
 module("photocopy", package.seeall)
 
+EntityModifiers = {}
+--BoneModifiers = {}
+EntityTableModifiers = {}
+
 IgnoreClassKeys = {
     class = "Class",
     model = "Model",
@@ -60,6 +64,30 @@ function RegisterFormat(id, readerCls, writerClass)
         ReaderClass = readerCls,
         WriterClass = writerClass,
     })
+end
+
+-- Register an entity modifier. Entity modifiers registered with
+-- Photocopy are lower priority than ones registered with
+-- the duplicator. Entity modifiers registered directly with Photocopy
+-- are for compatibility fixes.
+function RegisterEntityModifier(id, func)
+    EntityModifiers[id] = func
+end
+
+-- Register a bone modifier. Bone modifiers registered with
+-- Photocopy are lower priority than ones registered with
+-- the duplicator. Bone modifiers registered directly with Photocopy
+-- are for compatibility fixes.
+--[[
+function RegisterBoneModifier(id, func)
+    BoneModifiers[id] = func
+end
+]]--
+
+-- Register a entity table modifier. These are called as the table for
+-- each entity is built, allowing for compatibility fixes.
+function RegisterEntityTableModifier(id, func)
+    EntityTableModifiers[id] = func
 end
 
 ------------------------------------------------------------
@@ -183,7 +211,21 @@ function Clipboard:PrepareEntityData(ent)
         end
     end
     
+    self:ApplyEntityTableModifiers(ent, entTable, data)
+    
     return data
+end
+
+--- Apply entity table modifiers. 
+-- @param ent
+function Clipboard:ApplyEntityTableModifiers(ent, entTable, data)
+    for id, func in pairs(EntityTableModifiers) do
+        local ret, err = pcall(func, self.Player, ent, entTable, data)
+        
+        if not ret then
+            self:Warn("entity_table_modifier_error", id, ent:EntIndex(), err)
+        end
+    end
 end
 
 --- Prepare a constraint data table for a constraint.
@@ -417,6 +459,18 @@ end
 -- individual errors to the paster log.
 -- @param ent
 function Paster:ApplyEntityModifiers(ent)
+    -- Lower priority modifiers of Photocopy
+    for type, func in pairs(EntityModifiers) do
+        -- Skip ones that are registered with the duplicator
+        if not duplicator.EntityModifiers[type] and ent.EntityMods[type] then
+            local ret, err = pcall(func, self.Player, ent, ent.EntityMods[type])
+            
+            if not ret then
+                self:Warn("entity_photocopy_modifier_error", type, ent:EntIndex(), err)
+            end
+        end
+    end
+    
     for type, func in pairs(duplicator.EntityModifiers) do
         if ent.EntityMods[type] then
             local ret, err = pcall(func, self.Player, ent, ent.EntityMods[type])
@@ -957,3 +1011,12 @@ AccessorFunc(Writer, "Output", "Output")
 ------------------------------------------------------------
 
 MsgN("Photocopy %Version$ loaded (http://www.sk89q.com/projects/photocopy/)")
+
+include("photocopy/compat.lua")
+
+local list = file.FindInLua("photocopy/formats/*.lua")
+for _, f in pairs(list) do
+	MsgN("Photocopy: Auto-loading format file: " .. f)
+    include("photocopy/formats/" .. f)
+end
+

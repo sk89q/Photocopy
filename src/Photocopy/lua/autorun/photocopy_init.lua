@@ -17,17 +17,14 @@
 -- $Id$
 
 if SERVER then
+	AddCSLuaFile("autorun/photocopy_init.lua")
 	AddCSLuaFile("includes/modules/photocopy.lua")
 	AddCSLuaFile("includes/modules/photocopy.util.lua")
-	AddCSLuaFile("autorun/photocopy_init.lua")
+	AddCSLuaFile("photocopy/compat.lua")
 end
 
 local list = file.FindInLua("photocopy/formats/*.lua")
 for _, f in pairs(list) do
-	MsgN("Photocopy: Auto-loading format file: " .. f)
-	if SERVER then
-		AddCSLuaFile("photocopy/formats/"..f)
-	end
-    include("photocopy/formats/" .. f)
+	AddCSLuaFile("photocopy/formats/" .. f)
 end
 
