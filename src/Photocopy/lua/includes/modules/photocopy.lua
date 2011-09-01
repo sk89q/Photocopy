@@ -405,8 +405,7 @@ function Paster:ApplyEntityModifiers(ent)
             local ret, err = pcall(func, self.Player, ent, ent.EntityMods[type])
             
             if not ret then
-                self:Warn("Entity mod '%s' failed on ent #%d: %s",
-                              type, ent:EntIndex(), err)
+                self:Warn("entity_modifier_error", type, ent:EntIndex(), err)
             end
         end
     end
@@ -424,8 +423,7 @@ function Paster:ApplyBoneModifiers(ent)
                     local ret, err = pcall(func, self.Player, ent, bone,
                                            physObj, ent.BoneMods[bone][type])
                     if not ret then
-                        self:Warn("Bone mod '%s' failed on ent #%d: %s",
-                                      type, ent:EntIndex(), err)
+                        self:Warn("bone_modifier_error", type, ent:EntIndex(), err)
                     end
                 end
             end
@@ -479,6 +477,11 @@ function Paster:CreateEntity(entData)
     
     -- Using our own prop_physics factory function that doesn't have the effect
     if entData.Class == "prop_physics" then
+        if not IsValidModel(entData.Model) then
+            self:Warn("missing_model", entData.Model)
+            return nil
+        end
+        
         factory = PropClassFunction
     end
     
@@ -509,7 +512,7 @@ function Paster:CreateEntity(entData)
     if ret then
         return res
     else
-        self:Warn("Factory failed to create '%s': %s", entData.Class, res)
+        self:Warn("entity_factory_error", entData.Class, res)
         return nil
     end
 end
@@ -527,8 +530,7 @@ function Paster:CreateGenericEntity(entData)
     end
     
     if not IsValidModel(entData.Model) then
-        self:Warn("Server doesn't have the model '%s'; no entity created",
-                  entData.Model)
+        self:Warn("missing_model", entData.Model)
         return nil
     end
     
@@ -549,11 +551,10 @@ end
 -- @param entData Entity data
 function Paster:CreateDummyEntity(entData)    
     if not IsValidModel(entData.Model) then
-        self:Warn("Server doesn't have the model '%s'; no dummy entity created",
-                  entData.Model)
+        self:Warn("missing_model", entData.Model)
         return nil
     else
-        self:Warn("Server doesn't have a '%s' entity", entData.Class)
+        self:Warn("unknown_entity_type", entData.Class)
     end
     
     local ent = ents.Create("prop_physics")
@@ -651,9 +652,7 @@ function Paster:CreateConstraint(constrData)
             else
                 val = self.CreatedEntsMap[data.Index or -1]
                 if not ValidEntity(val) then
-                    self:Warn("Failed to create constraint '%s': " ..
-                        "Referred to non-existent entity #%d",
-                        constrData.Type, data.Index or -1)
+                    self:Warn("constraint_invalid_reference", constrData.Type, data.Index or -1)
                     return
                 end
             end
@@ -690,8 +689,7 @@ function Paster:CreateConstraint(constrData)
         
         return res
     else
-        self:Warn("Failed to create constraint '%s': %s",
-            constrData.Type, res)
+        self:Warn("constraint_create_fail", constrData.Type, res)
         return nil
     end
 end
