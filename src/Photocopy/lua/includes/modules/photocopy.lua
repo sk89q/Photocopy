@@ -20,6 +20,7 @@ local putil = require("photocopy.util")
 local CastVector = putil.CastVector
 local CastAngle = putil.CastAngle
 local CastTable = putil.CastTable
+local IsValidModel = util.IsValidModel
 
 module("photocopy", package.seeall)
 
@@ -525,7 +526,7 @@ function Paster:CreateGenericEntity(entData)
         return self:CreateDummyEntity(entData)
     end
     
-    if not util.IsValidModel(entData.Model) then
+    if not IsValidModel(entData.Model) then
         self:Warn("Server doesn't have the model '%s'; no entity created",
                   entData.Model)
         return nil
@@ -547,7 +548,7 @@ end
 -- can be overrided if you want to handle this a bit differently.
 -- @param entData Entity data
 function Paster:CreateDummyEntity(entData)    
-    if not util.IsValidModel(entData.Model) then
+    if not IsValidModel(entData.Model) then
         self:Warn("Server doesn't have the model '%s'; no dummy entity created",
                   entData.Model)
         return nil
