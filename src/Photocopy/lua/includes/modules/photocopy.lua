@@ -144,6 +144,7 @@ function Clipboard:PrepareEntityData(ent)
         LocalPos = entTable.Pos - self.Offset,
         LocalAngle = entTable.Angle,
         Flex = entTable.Flex,
+        FlexScale = entTable.FlexScale,
     }
     
     -- Localize positions in the physics objects
@@ -492,7 +493,8 @@ function Paster:CreateEntity(entData)
     
     -- Get class arguments
     for _, argName in ipairs(cls.Args) do
-        local newArgName = IgnoreClassKeys[argName:lower()]
+        local lowerArgName = argName:lower()
+        local newArgName = IgnoreClassKeys[lowerArgName] and IgnoreClassKeys[lowerArgName] or argName
         local val = nil
         
         if argName == "Data" then -- Duplicator has this special key
