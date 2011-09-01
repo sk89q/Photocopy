@@ -56,8 +56,8 @@ end
 -- @param writerClass Writer class, can be nil
 function RegisterFormat(id, readerCls, writerClass)
     list.Set("PhotocopyFormats", id, {
-        ReaderClass = AdvDupeReader,
-        WriterClass = nil,
+        ReaderClass = readerCls,
+        WriterClass = writerClass,
     })
 end
 
@@ -886,6 +886,52 @@ end
 
 AccessorFunc(Paster, "NoConstraints", "NoConstraints", FORCE_BOOL)
 AccessorFunc(Paster, "SpawnFrozen", "SpawnFrozen", FORCE_BOOL)
+
+------------------------------------------------------------
+-- Reader
+------------------------------------------------------------
+
+Reader = putil.CreateClass(putil.IterativeProcessor)
+
+-- Constructor.
+function Reader:__construct(data)
+    putil.IterativeProcessor.__construct(self)
+    
+    self.Data = data
+    self.Clipboard = nil
+end
+
+function Reader:GetName() return nil end
+function Reader:GetDescription() return nil end
+function Reader:GetCreatorName() return nil end
+function Reader:GetSaveTime() return nil end
+function Reader:GetOriginPos() return Vector(0, 0, 0) end
+function Reader:GetOriginAngle() return Angle(0, 0, 0) end
+
+AccessorFunc(Reader, "Clipboard", "Clipboard")
+
+------------------------------------------------------------
+-- Writer
+------------------------------------------------------------
+
+Writer = putil.CreateClass(putil.IterativeProcessor)
+
+-- Constructor.
+function Writer:__construct(clipboard)
+    putil.IterativeProcessor.__construct(self)
+    
+    self.Clipboard = clipboard
+    self.Output = ""
+end
+
+function Writer:SetName(name) end
+function Writer:SetDescription(desc) end
+function Writer:SetCreatorName(name) end
+function Writer:SetSaveTime(t) end
+function Writer:SetOriginPos(pos) end
+function Writer:SetOriginAngle(pos) end
+
+AccessorFunc(Writer, "Output", "Output")
 
 ------------------------------------------------------------
 

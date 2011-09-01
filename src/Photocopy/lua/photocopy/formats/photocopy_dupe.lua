@@ -43,7 +43,7 @@ function PCDWriter:__construct(clipboard)
         Time = os.time(),
     }
     
-    self.Buffer = photocopy.Buffer()
+    self.Buffer = putil.Buffer()
     
     -- Strings to be stored here
     self.Strings = {}
@@ -183,7 +183,7 @@ function PCDWriter:PrepareTableWrite(head, endFunc)
     self.TableQueue = { head }
     self.ConcludeFunc = endFunc
     self.Index = 1
-    self.TableBuffer = photocopy.Buffer()
+    self.TableBuffer = putil.Buffer()
     self.CurTable = nil
     self.CurTableIndex = nil
     self.NextSeq = 1
@@ -257,7 +257,7 @@ function PCDWriter:_WriteHeader()
     -- 89 P C O P Y 1A \r \n version
     self.Buffer:Write(string.char(137, 80, 67, 79, 80, 89, 26, 13, 10, ver))
     
-    local header = photocopy.Buffer()
+    local header = putil.Buffer()
     for k, v in pairs(self.Header) do
         header:Write(self:EscapeKV(k))
         header:Write(string.char(1))
@@ -292,7 +292,7 @@ function PCDWriter:_FinishConstraints()
     
     self:SetProgress(80)
     self.CurTableIndex = 1
-    self.StringsBuffer = photocopy.Buffer()
+    self.StringsBuffer = putil.Buffer()
     self:SetNext(0, self._WriteStrings)
 end
 

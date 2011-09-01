@@ -262,4 +262,4 @@ function AdvDupeReader:GetOriginPos()
     return Vector(0, 0, 0)
 end
 
-photocopy.RegisterFormat("AdvDupe", AdvDupeReader, PCDWriter)
+photocopy.RegisterFormat("AdvDupe", AdvDupeReader, nil)
