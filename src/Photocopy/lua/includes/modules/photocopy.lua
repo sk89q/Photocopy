@@ -1079,7 +1079,107 @@ function Filter:CanCreateConstraint(constrData)
     return true
 end
 
+
 ------------------------------------------------------------
+-- Networker
+------------------------------------------------------------
+if CLIENT then
+    CreateClientConVar("photocopy_ghost_rate" , "20" , {FCVAR_ARCHIVE} ) // how many ghosts per second
+end
+CreateConVar("photocopy_usermessages_per_second" , "20" , {FCVAR_ARCHIVE} ) // usermessages per second for ghost info
+
+NetWorker = putil.CreateClass(putil.IterativeProcessor)
+
+--the networker, will send things from the server to the client via usermessages
+-- @param data
+-- @param data override for files
+function NetWorker:__construct( ply , data , override )
+    if !override then
+        putil.IterativeProcessor.__construct(self)
+        
+        self.EntityData = data.EntityData
+        self.Player = ply
+        self.Pos = originPos
+        self.Ang = originAng
+        self.offsetz = (data:GetOffset() - QuickTrace( data:GetOffset() , data:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos).z
+       
+        self.SendRate = GetConVar("photocopy_usermessages_per_second"):GetInt() / 10
+
+        self.CreatedEntsMap = {}
+        self.CreatedEnts = {}
+        
+        self.CurIndex = nil
+        
+        self:SetNext(0.1, self.SendInitializerInfo)
+        self:CreateGhostEnt()
+    else
+        self.Data = data
+
+       self:SetNext(0.1, self.SendFileInfo )
+    end
+    
+    self:Start(function()
+        Entity(1):PrintMessage(HUD_PRINTTALK, "done! sending")
+    end)
+
+    self.ply = ply
+end
+
+function NetWorker:GetGhostController()
+    return self.GhostParent
+end
+
+function NetWorker:CreateGhostEnt()
+    local ent = ents.Create("prop_physics")
+    ent:SetNoDraw(true)
+    ent:SetModel("models/props_c17/furnitureStove001a.mdl")
+    ent:SetCollisionGroup(COLLISION_GROUP_WORLD)
+    ent:SetNotSolid(true)
+    ent:Spawn()
+    ent:Activate()
+    self.GhostParent = ent
+end
+
+function NetWorker:SendInitializerInfo()   
+    umsg.Start("photocopy_ghost_init" , self.ply )
+        umsg.Entity( self:GetGhostController() )
+        umsg.Float( self.offsetz )
+    umsg.End()
+    self:SetNext(0.5 , self.SendGhostInfo)
+end
+
+function NetWorker:SendGhostInfo()
+    local entIndex , entData
+    local pos , ang
+    for i = 1 , self.SendRate do        
+        entIndex , entData = next(self.EntityData, self.CurIndex)
+        self.CurIndex = entIndex
+
+        if not entIndex then
+            self.CurIndex = nil
+            //self:SetNext(0.05, self._PostSetup)
+            self:SetNext(0,false)
+            return
+        end
+
+        umsg.Start("photocopy_ghost_info" , self.ply )
+            umsg.String(entData.Model)
+            -- postion
+            pos = entData.LocalPos
+                umsg.Float(pos.x)
+                umsg.Float(pos.y)
+                umsg.Float(pos.z)
+            --angle
+            ang = entData.LocalAngle
+                umsg.Float(ang.p)
+                umsg.Float(ang.y)
+                umsg.Float(ang.r)
+            
+        umsg.End()
+    end
+
+    self:SetNext(0.1)
+end
 
 MsgN("Photocopy %Version$ loaded (http://www.sk89q.com/projects/photocopy/)")
 
