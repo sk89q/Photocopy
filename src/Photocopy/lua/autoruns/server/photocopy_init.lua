@@ -20,5 +20,5 @@ AddCSLuaFile("includes/modules/photocopy.lua")
 AddCSLuaFile("includes/modules/photocopy.util.lua")
 
 -- Adding these files manually for security reasons
-AddCSLuaFile("includes/modules/adv_dupe.lua")
-AddCSLuaFile("includes/modules/photocopy_dupe.lua")
+AddCSLuaFile("photocopy/formats/adv_dupe.lua")
+AddCSLuaFile("photocopy/formats/photocopy_dupe.lua")
