@@ -1094,13 +1094,13 @@ NetWorker = putil.CreateClass(putil.IterativeProcessor)
 -- @param data
 -- @param data override for files
 function NetWorker:__construct( ply , data , override )
+    self.ply = ply
     if !override then
         putil.IterativeProcessor.__construct(self)
         
         self.EntityData = data.EntityData
-        self.Player = ply
-        self.Pos = originPos
-        self.Ang = originAng
+
+        self.Pos = data:GetOffset()
         self.offsetz = (data:GetOffset() - QuickTrace( data:GetOffset() , data:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos).z
        
         self.SendRate = GetConVar("photocopy_usermessages_per_second"):GetInt() / 10
@@ -1111,7 +1111,6 @@ function NetWorker:__construct( ply , data , override )
         self.CurIndex = nil
         
         self:SetNext(0.1, self.SendInitializerInfo)
-        self:CreateGhostEnt()
     else
         self.Data = data
 
@@ -1121,28 +1120,38 @@ function NetWorker:__construct( ply , data , override )
     self:Start(function()
         Entity(1):PrintMessage(HUD_PRINTTALK, "done! sending")
     end)
-
-    self.ply = ply
-end
-
-function NetWorker:GetGhostController()
-    return self.GhostParent
 end
 
 function NetWorker:CreateGhostEnt()
-    local ent = ents.Create("prop_physics")
-    ent:SetNoDraw(true)
-    ent:SetModel("models/props_c17/furnitureStove001a.mdl")
+    local ent = ents.Create("base_anim")
+    ent:SetColor(0,0,0,0)
     ent:SetCollisionGroup(COLLISION_GROUP_WORLD)
     ent:SetNotSolid(true)
     ent:Spawn()
     ent:Activate()
+
+    self.ply.GhostController = ent
     self.GhostParent = ent
+    return ent
 end
 
-function NetWorker:SendInitializerInfo()   
+function NetWorker:GetGhostController()
+    MsgN(self.ply.GhostController)
+    local ent 
+    if IsValid(self.ply.GhostController) then
+        ent = self.ply.GhostController
+    else
+        ent = self:CreateGhostEnt()
+    end
+    
+    ent:SetPos(self.Pos)
+    return ent
+end
+
+function NetWorker:SendInitializerInfo()
+    local ent = self:GetGhostController()
     umsg.Start("photocopy_ghost_init" , self.ply )
-        umsg.Entity( self:GetGhostController() )
+        umsg.Entity( ent )
         umsg.Float( self.offsetz )
     umsg.End()
     self:SetNext(0.5 , self.SendGhostInfo)
