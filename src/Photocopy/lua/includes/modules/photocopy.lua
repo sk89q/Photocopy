@@ -17,12 +17,51 @@
 -- $Id$
 
 local putil = require("photocopy.util")
+local datastream = require("datastream")
+local list = list
+local table = table
+local duplicator = duplicator
+local constraint = constraint 
+local hook = hook
+local gamemode = gamemode
+local ents = ents
+local undo = undo
+local umsg = umsg
+local file = file
+local math = math
+local usermessage = usermessage
+local string = string
+
+local LocalPlayer = LocalPlayer 
+local pairs = pairs 
+local ipairs = ipairs 
+local unpack = unpack 
+local ValidEntity = ValidEntity 
+local pcall = pcall 
+local AccessorFunc = AccessorFunc 
+local FixInvalidPhysicsObject = FixInvalidPhysicsObject
+local CreateConVar = CreateConVar 
+local GetConVar = GetConVar 
+local LocalToWorld = LocalToWorld 
+local type = type 
+local tostring = tostring 
+local tonumber = tonumber 
+local GetWorldEntity = GetWorldEntity 
+local IsValid = IsValid 
+local include = include 
+local MsgN = MsgN 
+local error = error 
 local CastVector = putil.CastVector
 local CastAngle = putil.CastAngle
 local CastTable = putil.CastTable
 local IsValidModel = util.IsValidModel
+local QuickTrace = util.QuickTrace
+local CRC = util.CRC
 
-module("photocopy", package.seeall)
+local SERVER = SERVER
+local CLIENT = CLIENT
+
+module("photocopy")
 
 EntityModifiers = {}
 --BoneModifiers = {}
@@ -100,7 +139,7 @@ Clipboard = putil.CreateClass()
 -- @param offset Offset position
 function Clipboard:__construct(offset)
     if not offset then
-        error("Offset for copy is required")
+        error("Offset for copy is required" , 2)
     end
     self.Offset = offset
     self.EntityData = {}
@@ -194,12 +233,12 @@ function Clipboard:PrepareEntityData(ent)
         physObj.Pos = nil
         physObj.Angle = nil
     end
-    
+
     -- Store parent
     if ValidEntity(ent:GetParent()) then
         data.SavedParentIdx = ent:GetParent():EntIndex()
     end
-    
+
     local cls = duplicator.FindEntityClass(ent:GetClass())
     
     if cls then
@@ -360,6 +399,7 @@ end)
 -- @param model
 -- @param physObj
 -- @param data Entity data
+
 local function PropClassFunction(ply, pos, ang, model, physObjs, data)
     data.Pos = pos
     data.Angle = ang
@@ -446,7 +486,7 @@ function Paster:CanCreateEntity(entData)
     if entData.Class == "" then return false end
     
     if not self.Filter then return true end
-    PrintTable(self.Filter)
+    //PrintTable(self.Filter)
     return self.Filter:CanCreateEntity(entData)
 end
 
@@ -602,7 +642,7 @@ function Paster:CreateEntity(entData)
         self:Warn("entity_factory_error", entData.Class, res)
         return nil
     end
-end
+end 
 
 --- Create a generic entity. This is called for entities that do not have
 -- a registered class type. If the entity also doesn't exist on the server,
@@ -632,7 +672,7 @@ function Paster:CreateGenericEntity(entData)
     
     return ent
 end
-
+ 
 --- Create a dummy entity (for entities that do not exist). This function
 -- can be overrided if you want to handle this a bit differently.
 -- @param entData Entity data
@@ -1083,46 +1123,37 @@ end
 ------------------------------------------------------------
 -- Networker
 ------------------------------------------------------------
-if CLIENT then
-    CreateClientConVar("photocopy_ghost_rate" , "20" , {FCVAR_ARCHIVE} ) // how many ghosts per second
-end
-CreateConVar("photocopy_usermessages_per_second" , "20" , {FCVAR_ARCHIVE} ) // usermessages per second for ghost info
+if SERVER then
+CreateConVar("photocopy_ghosts_per_second" , "20" , {FCVAR_ARCHIVE} ) // usermessages per second for ghost info
 
-NetWorker = putil.CreateClass(putil.IterativeProcessor)
+svGhoster = putil.CreateClass(putil.IterativeProcessor)
 
 --the networker, will send things from the server to the client via usermessages
 -- @param data
 -- @param data override for files
-function NetWorker:__construct( ply , data , override )
+function svGhoster:__construct( ply )
+    putil.IterativeProcessor.__construct(self)
     self.ply = ply
-    if !override then
-        putil.IterativeProcessor.__construct(self)
-        
-        self.EntityData = data.EntityData
-
-        self.Pos = data:GetOffset()
-        self.offsetz = (data:GetOffset() - QuickTrace( data:GetOffset() , data:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos).z
-       
-        self.SendRate = GetConVar("photocopy_usermessages_per_second"):GetInt() / 10
-
-        self.CreatedEntsMap = {}
-        self.CreatedEnts = {}
-        
-        self.CurIndex = nil
-        
-        self:SetNext(0.1, self.SendInitializerInfo)
-    else
-        self.Data = data
-
-       self:SetNext(0.1, self.SendFileInfo )
-    end
-    
-    self:Start(function()
-        Entity(1):PrintMessage(HUD_PRINTTALK, "done! sending")
-    end)
 end
 
-function NetWorker:CreateGhostEnt()
+-- the initialiser
+-- @param clipboard, a clipboard object
+function svGhoster:Initialize( clipboard )
+        self.EntityData = clipboard.EntityData
+
+        self.Pos = clipboard:GetOffset()
+        self.offsetz = (clipboard:GetOffset() - QuickTrace( clipboard:GetOffset() , clipboard:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos).z
+       
+        self.SendRate = GetConVar("photocopy_usermessages_per_second"):GetInt() / 10
+        
+        self.CurIndex = nil
+
+        self.GhostParent = self:GetGhostController()
+        self:SetNext(0.1, self.SendInitializeInfo)
+end
+
+-- Creates the ghost entity a single player's ghost parent too, bound to that player
+function svGhoster:CreateGhostEnt()
     local ent = ents.Create("base_anim")
     ent:SetColor(0,0,0,0)
     ent:SetCollisionGroup(COLLISION_GROUP_WORLD)
@@ -1131,12 +1162,15 @@ function NetWorker:CreateGhostEnt()
     ent:Activate()
 
     self.ply.GhostController = ent
-    self.GhostParent = ent
+    
     return ent
 end
+hook.Add("PlayerDisconnected" , "photocopy_remove_ghostent" , function( ply )
+    SafeRemoveEntity(ply.GhostController)
+end)
 
-function NetWorker:GetGhostController()
-    MsgN(self.ply.GhostController)
+-- Returns the player's GhostParet 
+function svGhoster:GetGhostController()
     local ent 
     if IsValid(self.ply.GhostController) then
         ent = self.ply.GhostController
@@ -1148,16 +1182,17 @@ function NetWorker:GetGhostController()
     return ent
 end
 
-function NetWorker:SendInitializerInfo()
-    local ent = self:GetGhostController()
+-- Sends the initializer info to start a new ghost
+function svGhoster:SendInitializeInfo()
     umsg.Start("photocopy_ghost_init" , self.ply )
-        umsg.Entity( ent )
+        umsg.Entity( self:GetGhostController() )
         umsg.Float( self.offsetz )
     umsg.End()
     self:SetNext(0.5 , self.SendGhostInfo)
 end
 
-function NetWorker:SendGhostInfo()
+--ghost info
+function svGhoster:SendGhostInfo()
     local entIndex , entData
     local pos , ang
     for i = 1 , self.SendRate do        
@@ -1166,7 +1201,6 @@ function NetWorker:SendGhostInfo()
 
         if not entIndex then
             self.CurIndex = nil
-            //self:SetNext(0.05, self._PostSetup)
             self:SetNext(0,false)
             return
         end
@@ -1189,6 +1223,188 @@ function NetWorker:SendGhostInfo()
 
     self:SetNext(0.1)
 end
+
+------------------------------------------------------------
+-- svFileNetworker
+------------------------------------------------------------
+svFileNetworker = putil.CreateClass(putil.IterativeProcessor)
+
+function svFileNetworker:__construct( ply )
+    putil.IterativeProcessor.__construct(self)
+    self.ply = ply
+
+    datastream.Hook("photocopy_serverfiletransfer"..tostring(ply) , function( pl , handler , id , encoded , decoded ) self:ReceiveFile( pl , decoded) end)
+    hook.Add("AcceptStream" , "photocopy_serverfiletransfer"..tostring(ply) , function(pl) return pl == ply end)
+end
+
+
+function svFileNetworker:SendToClient( data , filename , callback , ply )
+    if self.Sending then return end
+    self.ply = ply or self.ply
+    self.data = data
+    self.index = 0
+    self.chunk = 0
+    self.length = math.ceil( #data / 250 )
+    self.Sending = true
+
+    umsg.Start( "photocopy_clientfiletransfer_init" , self.ply )
+        umsg.String( CRC( self.data ) )
+        umsg.String( filename )
+        umsg.Long( self.length )
+    umsg.End()
+
+    self:Start( function() self.Sending = false end )
+    self:SetNext(0.025 , self.SendData )
+end
+
+function svFileNetworker:SendData()
+    self.chunk = self.chunk + 1
+    if self.chunk == self.length then self:SetNext( 0 , false ) end
+    local str = string.sub( self.data , self.index , self.index +250 )
+
+    umsg.Start( "photocopy_clientfiletransfer_data" , self.ply )
+        umsg.String( str )
+    umsg.End()
+
+    self.index = self.index + 251
+    self:SetNext( 0.025 )
+    
+end
+
+function svFileNetworker:SetCallbacks( OnSuccess , OnFailed )
+    if OnSuccess then
+        self.OnSuccess = OnSuccess
+    else
+        self.OnSuccess = function() end
+    end
+    if OnFailed then
+        self.OnFailed = OnFailed
+    else
+        self.OnFailed = function() end
+    end
+end
+
+function svFileNetworker:ReceiveFile( ply , tab )
+    local filename = tab[1]
+    local crc = tab[2]
+    local data = tab[3]
+
+    if crc == CRC( tab[3] ) then
+        self.OnSuccess( filename , data )
+    else
+        self.OnFailed()
+    end
+end
+
+
+
+
+end
+if CLIENT then
+------------------------------------------------------------
+-- clFileNetworker
+------------------------------------------------------------
+clFileNetworker = putil.CreateClass(putil.IterativeProcessor)
+
+-- constructer, there should only ever be one clFileNetworker class client side ever
+function clFileNetworker:__construct()
+    putil.IterativeProcessor.__construct(self)
+
+    self.Length = 0
+    self.Index = 0
+
+    usermessage.Hook( "photocopy_clientfiletransfer_init" , function( um ) self:InitializeTransfer( um:ReadString() , um:ReadString() , um:ReadLong() ) end)
+
+    usermessage.Hook( "photocopy_clientfiletransfer_data" , function( um ) self:ReceiveData( um:ReadString() ) end)
+
+end
+
+-- Called when the initializing usermessage is received.
+-- @param crc a crc of the file
+-- @param length of the file /250, amout of usermessages to be received.
+function clFileNetworker:InitializeTransfer( crc , filename , length )
+    self.CRC = crc
+    self.Length = length
+    self.FileName = filename
+    self.ReceivingFile = true
+
+    self.Index = 0
+    self.Progress = 0
+    self.Strings = {}
+end
+
+-- Called when part of the data is received
+-- @param strchunk a string 250 chars in length, received by the usermessage
+function clFileNetworker:ReceiveData( strchunk )
+    self.Index = self.Index + 1
+
+    MsgN(self.Index , "\t\t" , self.Length )
+    MsgN(self:GetProgress())
+
+    self.Strings[ #self.Strings + 1 ] = strchunk
+
+    if self.Index == self.Length then self:Finish() end
+end
+
+-- called when the entire file is received, turns the received chunks into a string again
+function clFileNetworker:Finish()
+    self.Receiving = false
+    local concat = table.concat( self.Strings , "" )
+
+    local crc = CRC( concat )
+
+    if crc == self.CRC then
+        self.OnReceived( concat , self.FileName )
+    else
+        self.OnFailed()
+    end
+end
+
+-- Used to set the OnSucces and OnFailed callback
+-- param OnSuccess called when succesful file transfer
+-- param OnFailed called when unsuccessful file transfer
+function clFileNetworker:SetCallbacks( OnReceived , OnFailed )
+    if OnSuccess then
+        self.OnReceived = OnReceived
+    else
+        self.OnReceived = function() end
+    end
+    if OnFailed then
+        self.OnFailed = OnFailed
+    else
+        self.OnFailed = function() end
+    end
+end
+
+-- Sending files
+
+function clFileNetworker:SendToServer( data , filename , callbackcompleted )
+    if self.Receiving then notification.AddLegacy( "Cannot upload file while downloading a file", NOTIFY_ERROR , 7 ) return end
+    self.Sending = true
+    self.Length = #filename + #CRC(data) + #data
+
+    local function Completed( ... )
+        self.Sending = false
+        callbackcompleted(...)
+    end
+
+    self.SendID = datastream.StreamToServer("photocopy_serverfiletransfer"..tostring(LocalPlayer()) , { filename , CRC(data) , data}, Completed )
+end
+
+
+
+-- returns the progress on the file download
+function clFileNetworker:GetProgress()
+    if self.ReceivingFile then
+        return (self.Index / self.Length) * 100
+    elseif self.Sending then
+        return ((datastream.GetProgress( self.SendID ) or 0) / self.Length) * 100
+    end
+end 
+
+
+
+end // end "if CLIENT then" block
 
 MsgN("Photocopy %Version$ loaded (http://www.sk89q.com/projects/photocopy/)")
 

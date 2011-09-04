@@ -15,8 +15,24 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -- 
 -- $Id$
+//, package.seeall
+local table = table
+local hook = hook
 
-module("photocopy.util", package.seeall)
+local type = type 
+local CurTime = CurTime 
+local Vector = Vector 
+local tonumber = tonumber 
+local tostring = tostring 
+local pairs = pairs 
+local setmetatable = setmetatable 
+local Angle = Angle 
+local pcall = pcall 
+local unpack = unpack 
+local ErrorNoHalt = ErrorNoHalt 
+local AccessorFunc = AccessorFunc 
+
+module("photocopy.util")
 
 --- Creates a new class (a table) that is callable.
 -- @param parent Optional parent table (__index = parent)

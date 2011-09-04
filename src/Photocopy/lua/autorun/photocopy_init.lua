@@ -15,9 +15,12 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -- 
 -- $Id$
+require("photocopy")
+require("photocopy.util")
 
 if SERVER then
 	AddCSLuaFile("autorun/photocopy_init.lua")
+	AddCSLuaFile("autorun/client/cl_ghoster.lua")
 	AddCSLuaFile("includes/modules/photocopy.lua")
 	AddCSLuaFile("includes/modules/photocopy.util.lua")
 	AddCSLuaFile("photocopy/compat.lua")
