@@ -16,41 +16,9 @@
 -- 
 -- $Id$
 
-local putil = require("photocopy.util")
-local datastream = require("datastream")
-local list = list
-local table = table
-local duplicator = duplicator
-local constraint = constraint 
-local hook = hook
-local gamemode = gamemode
-local ents = ents
-local undo = undo
-local umsg = umsg
-local file = file
-local math = math
-local usermessage = usermessage
-local string = string
 
-local LocalPlayer = LocalPlayer 
-local pairs = pairs 
-local ipairs = ipairs 
-local unpack = unpack 
-local ValidEntity = ValidEntity 
-local pcall = pcall 
-local AccessorFunc = AccessorFunc 
-local FixInvalidPhysicsObject = FixInvalidPhysicsObject
-local CreateConVar = CreateConVar 
-local GetConVar = GetConVar 
-local LocalToWorld = LocalToWorld 
-local type = type 
-local tostring = tostring 
-local tonumber = tonumber 
-local GetWorldEntity = GetWorldEntity 
-local IsValid = IsValid 
-local include = include 
-local MsgN = MsgN 
-local error = error 
+local putil = require("photocopy.util")
+
 local CastVector = putil.CastVector
 local CastAngle = putil.CastAngle
 local CastTable = putil.CastTable
@@ -61,7 +29,7 @@ local CRC = util.CRC
 local SERVER = SERVER
 local CLIENT = CLIENT
 
-module("photocopy")
+module("photocopy",package.seeall )
 
 EntityModifiers = {}
 --BoneModifiers = {}
@@ -296,7 +264,7 @@ function Clipboard:PrepareConstraintData(constr)
             Index = constr.Ent:EntIndex(),
             World = constr.Ent:IsWorld() or nil,
             Bone = constr.Bone,
-        }
+        } 
     else
         for i = 1, 6 do
             local id = "Ent" .. i
@@ -1144,12 +1112,12 @@ function svGhoster:Initialize( clipboard )
         self.Pos = clipboard:GetOffset()
         self.offsetz = (clipboard:GetOffset() - QuickTrace( clipboard:GetOffset() , clipboard:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos).z
        
-        self.SendRate = GetConVar("photocopy_usermessages_per_second"):GetInt() / 10
+        self.SendRate = GetConVar("photocopy_ghosts_per_second"):GetInt() / 10
         
         self.CurIndex = nil
 
         self.GhostParent = self:GetGhostController()
-        self:SetNext(0.1, self.SendInitializeInfo)
+        self:SetNext(0, self.SendInitializeInfo)
 end
 
 -- Creates the ghost entity a single player's ghost parent too, bound to that player
@@ -1167,6 +1135,16 @@ function svGhoster:CreateGhostEnt()
 end
 hook.Add("PlayerDisconnected" , "photocopy_remove_ghostent" , function( ply )
     SafeRemoveEntity(ply.GhostController)
+end)
+hook.Add("PlayerInitialSpawn" , "photocopy_create_ghostent" , function( ply )
+    local ent = ents.Create("base_anim")
+    ent:SetColor(0,0,0,0)
+    ent:SetCollisionGroup(COLLISION_GROUP_WORLD)
+    ent:SetNotSolid(true)
+    ent:Spawn()
+    ent:Activate()
+
+    ply.GhostController = ent
 end)
 
 -- Returns the player's GhostParet 
@@ -1338,9 +1316,6 @@ end
 function clFileNetworker:ReceiveData( strchunk )
     self.Index = self.Index + 1
 
-    MsgN(self.Index , "\t\t" , self.Length )
-    MsgN(self:GetProgress())
-
     self.Strings[ #self.Strings + 1 ] = strchunk
 
     if self.Index == self.Length then self:Finish() end
@@ -1377,7 +1352,6 @@ function clFileNetworker:SetCallbacks( OnReceived , OnFailed )
 end
 
 -- Sending files
-
 function clFileNetworker:SendToServer( data , filename , callbackcompleted )
     if self.Receiving then notification.AddLegacy( "Cannot upload file while downloading a file", NOTIFY_ERROR , 7 ) return end
     self.Sending = true

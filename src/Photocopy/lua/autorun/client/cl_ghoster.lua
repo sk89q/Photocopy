@@ -22,7 +22,7 @@ local photocopy = require("photocopy")
 ------------------------------------------------------------
 -- Ghoster
 ------------------------------------------------------------
-Ghoster = putil.CreateClass(putil.IterativeProcessor)
+local Ghoster = putil.CreateClass(putil.IterativeProcessor)
 
 --creates the ghoster class, used for controlling all ghosts
 function Ghoster:__construct()
@@ -85,6 +85,7 @@ function Ghoster:RemoveGhosts()
 		if IsValid(ent) then
 			ent:Remove()
 		end
+		self.Initialized = false
 		self.Ghosts[ent] = nil
 	end
 end
@@ -108,3 +109,5 @@ function Ghoster:SetAlpha(alpha)
 		end
 	end
 end
+
+photocopy.Ghoster = Ghoster
