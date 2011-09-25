@@ -1,5 +1,5 @@
-TOOL.Category		= "Construction"
-TOOL.Name			= "#Carbon Copier Duplicator"
+TOOL.Category		= "Construction EX"
+TOOL.Name			= "#Carbon Copier"
 TOOL.Command		= nil
 TOOL.ConfigName		= ""
 
@@ -15,8 +15,8 @@ TOOL.ClientConVar["gravtext"] = "0"
 TOOL.ClientConVar["drawindicator"] = "0"
 TOOL.ClientConVar["size"] = "1"
 
-local photocopy = require("photocopy")
 local putil = require("photocopy.util")
+local photocopy = require("photocopy")
 
 if CLIENT then
 	language.Add( "Tool_carbon_copier_name", "Carbon Copier duplicator tool" )
