@@ -19,6 +19,7 @@
 local table = table
 local hook = hook
 
+local concat = table.concat
 local type = type 
 local CurTime = CurTime 
 local Vector = Vector 
@@ -31,6 +32,9 @@ local pcall = pcall
 local unpack = unpack 
 local ErrorNoHalt = ErrorNoHalt 
 local AccessorFunc = AccessorFunc 
+
+local PrintTable = PrintTable 
+local MsgN = MsgN 
 
 module("photocopy.util")
 
@@ -143,6 +147,7 @@ function IterativeProcessor:__construct(data)
     self.Finished = false
     self.Error = nil
     self.Warnings = {}
+    self.Callbackargs = {}
     self.NextThinkTime = 0
     self.NextFunc = nil
 end
@@ -150,8 +155,9 @@ end
 function IterativeProcessor:OnSuccess() end
 function IterativeProcessor:OnError() end
 
-function IterativeProcessor:Start(callback, errback)
+function IterativeProcessor:Start(callback, errback , ...)
     if callback then
+        self.Callbackargs = {...}
         self.OnSuccess = callback
         self.OnError = errback
     end
@@ -183,7 +189,7 @@ function IterativeProcessor:Advance()
         return true
     else
         self.Finished = true
-        self:OnSuccess()
+        self:OnSuccess(unpack(self.Callbackargs))
         return false
     end
 end
@@ -202,7 +208,7 @@ end
 
 function IterativeProcessor:SetError(err, ...)
     if not self.Error then
-        self:OnError(err)
+        self:OnError(err,unpack(self.Callbackargs))
     end
     self.Error = err
 end
@@ -243,9 +249,9 @@ function Buffer:__construct()
 end
 
 function Buffer:Write(str)
-    table.insert(self.Output, str)
+    self.Output[#self.Output + 1] = str
 end
 
 function Buffer:GetValue()
-    return table.concat(self.Output, "")
+    return concat(self.Output, "")
 end

@@ -18,6 +18,7 @@
 
 
 local putil = require("photocopy.util")
+local hook = hook
 
 local CastVector = putil.CastVector
 local CastAngle = putil.CastAngle
@@ -1092,7 +1093,7 @@ end
 -- Networker
 ------------------------------------------------------------
 if SERVER then
-CreateConVar("photocopy_ghosts_per_second" , "20" , {FCVAR_ARCHIVE} ) // usermessages per second for ghost info
+CreateConVar("photocopy_ghost_rate" , "50" , {FCVAR_ARCHIVE} ) // usermessages per second for ghost info
 
 svGhoster = putil.CreateClass(putil.IterativeProcessor)
 
@@ -1106,13 +1107,13 @@ end
 
 -- the initialiser
 -- @param clipboard, a clipboard object
-function svGhoster:Initialize( clipboard )
+function svGhoster:Initialize( clipboard , offset)
         self.EntityData = clipboard.EntityData
 
         self.Pos = clipboard:GetOffset()
-        self.offsetz = (clipboard:GetOffset() - QuickTrace( clipboard:GetOffset() , clipboard:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos).z
+        self.offsetz = offset or (clipboard:GetOffset() - QuickTrace( clipboard:GetOffset() , clipboard:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos).z
        
-        self.SendRate = GetConVar("photocopy_ghosts_per_second"):GetInt() / 10
+        self.SendRate = GetConVar("photocopy_ghost_rate"):GetInt() / 10
         
         self.CurIndex = nil
 
@@ -1136,15 +1137,17 @@ end
 hook.Add("PlayerDisconnected" , "photocopy_remove_ghostent" , function( ply )
     SafeRemoveEntity(ply.GhostController)
 end)
-hook.Add("PlayerInitialSpawn" , "photocopy_create_ghostent" , function( ply )
-    local ent = ents.Create("base_anim")
-    ent:SetColor(0,0,0,0)
-    ent:SetCollisionGroup(COLLISION_GROUP_WORLD)
-    ent:SetNotSolid(true)
-    ent:Spawn()
-    ent:Activate()
+hook.Add("PlayerSpawn" , "photocopy_create_ghostent" , function( ply )
+    if !ply.GhostController then
+        local ent = ents.Create("base_anim")
+        ent:SetColor(0,0,0,0)
+        ent:SetCollisionGroup(COLLISION_GROUP_WORLD)
+        ent:SetNotSolid(true)
+        ent:Spawn()
+        ent:Activate()
 
-    ply.GhostController = ent
+        ply.GhostController = ent
+    end
 end)
 
 -- Returns the player's GhostParet 
@@ -1166,7 +1169,7 @@ function svGhoster:SendInitializeInfo()
         umsg.Entity( self:GetGhostController() )
         umsg.Float( self.offsetz )
     umsg.End()
-    self:SetNext(0.5 , self.SendGhostInfo)
+    self:SetNext(0 , self.SendGhostInfo)
 end
 
 --ghost info
@@ -1199,7 +1202,7 @@ function svGhoster:SendGhostInfo()
         umsg.End()
     end
 
-    self:SetNext(0.1)
+    self:SetNext(0)
 end
 
 ------------------------------------------------------------
@@ -1222,7 +1225,7 @@ function svFileNetworker:SendToClient( data , filename , callback , ply )
     self.data = data
     self.index = 0
     self.chunk = 0
-    self.length = math.ceil( #data / 250 )
+    self.length = math.ceil( #data / 245 )
     self.Sending = true
 
     umsg.Start( "photocopy_clientfiletransfer_init" , self.ply )
@@ -1231,21 +1234,23 @@ function svFileNetworker:SendToClient( data , filename , callback , ply )
         umsg.Long( self.length )
     umsg.End()
 
-    self:Start( function() self.Sending = false end )
+    self:Start( function() self.Sending = false  if callback then callback() end end )
     self:SetNext(0.025 , self.SendData )
 end
 
 function svFileNetworker:SendData()
-    self.chunk = self.chunk + 1
-    if self.chunk == self.length then self:SetNext( 0 , false ) end
-    local str = string.sub( self.data , self.index , self.index +250 )
+    for i = 1 , 5 do
+        self.chunk = self.chunk + 1
+        if self.chunk == self.length then self:SetNext( 0 , false ) end
+        local str = string.sub( self.data , self.index , self.index +245 )
 
-    umsg.Start( "photocopy_clientfiletransfer_data" , self.ply )
-        umsg.String( str )
-    umsg.End()
+        umsg.Start( "photocopy_clientfiletransfer_data" , self.ply )
+            umsg.String( str )
+        umsg.End()
 
-    self.index = self.index + 251
-    self:SetNext( 0.025 )
+        self.index = self.index + 246
+    end
+    self:SetNext( 0 )
     
 end
 
@@ -1327,11 +1332,11 @@ function clFileNetworker:Finish()
     local concat = table.concat( self.Strings , "" )
 
     local crc = CRC( concat )
-
+    MsgN(crc , "\t" , self.CRC)
     if crc == self.CRC then
         self.OnReceived( concat , self.FileName )
     else
-        self.OnFailed()
+        self.OnFailed( concat , crc )
     end
 end
 
@@ -1339,7 +1344,7 @@ end
 -- param OnSuccess called when succesful file transfer
 -- param OnFailed called when unsuccessful file transfer
 function clFileNetworker:SetCallbacks( OnReceived , OnFailed )
-    if OnSuccess then
+    if OnReceived then
         self.OnReceived = OnReceived
     else
         self.OnReceived = function() end

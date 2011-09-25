@@ -23,8 +23,9 @@ local AdvDupeReader = putil.CreateClass(photocopy.Reader)
 
 --- Construct the Adv. Dupe reader.
 -- @param data
-function AdvDupeReader:__construct(data)
+function AdvDupeReader:__construct(data , parsetime)
     photocopy.Reader.__construct(self, data)
+    self.parsetime = parsetime or 0.1
     
     self.Header = {}
     self.ExtraHeader = {}
@@ -169,7 +170,7 @@ function AdvDupeReader:_ParseFormat()
     self.DictData = dictBlock
     
     self:SetProgress(5)
-    self:SetNext(0.1, self._ParseHeaders)
+    self:SetNext(self.parsetime, self._ParseHeaders)
 end
 
 -- Parse the two headers in this stage. This function will choke the server
@@ -180,7 +181,7 @@ function AdvDupeReader:_ParseHeaders()
     self.ExtraHeader = self:ParseKeyValueBlock(self.ExtraHeaderData)
     
     self:SetProgress(10)
-    self:SetNext(0.1, self._ParseDictAndSave)
+    self:SetNext(self.parsetime, self._ParseDictAndSave)
 end
 
 -- Parse the dict and save sections. Choking issue applies.
@@ -191,7 +192,7 @@ function AdvDupeReader:_ParseDictAndSave()
         self.Save = self:ParseKeyValueBlock(self.SaveData, true)
         
         self:SetProgress(40)
-        self:SetNext(0.1, self._DeserializeEntities)
+        self:SetNext(self.parsetime, self._DeserializeEntities)
     -- Contraption Saver
     else
         local dict, firstLine
@@ -207,7 +208,7 @@ function AdvDupeReader:_ParseDictAndSave()
         
         -- The first line contains the entity/constraint data (I think)
         self:SetProgress(40)
-        self:SetNext(0.1, self.DeserializeContraptionSaver)
+        self:SetNext(self.parsetime, self.DeserializeContraptionSaver)
     end
 end
 
@@ -226,7 +227,7 @@ function AdvDupeReader:_DeserializeEntities()
     self.EntityData = self:DeserializeTables(self.Save.Entities or "")
     
     self:SetProgress(70)
-    self:SetNext(0.1, self._DeserializeConstraints)
+    self:SetNext(self.parsetime, self._DeserializeConstraints)
 end
 
 -- Parse the dict and save sections. Choking issue applies.

@@ -25,9 +25,3 @@ if SERVER then
 	AddCSLuaFile("includes/modules/photocopy.util.lua")
 	AddCSLuaFile("photocopy/compat.lua")
 end
-
-local list = file.FindInLua("photocopy/formats/*.lua")
-for _, f in pairs(list) do
-	AddCSLuaFile("photocopy/formats/" .. f)
-end
-

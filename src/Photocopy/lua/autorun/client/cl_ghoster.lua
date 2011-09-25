@@ -39,12 +39,13 @@ function Ghoster:Hook()
 			self:RemoveGhosts()
 		end
 		self.Parent = um:ReadEntity()
-		self.offsetz = um:ReadFloat()
+		self.offsetz = Vector(0,0,um:ReadFloat())
 		self.Pos = self.Parent:GetPos()
 		self.Ang = self.Parent:GetAngles()
 
 		self.Initialized = true
 
+		self:ParentToMouse()
 		self:SetNext(0,self.ParentToMouse)
 		self:Start()
 	end
@@ -69,11 +70,13 @@ function Ghoster:Hook()
 	usermessage.Hook("photocopy_ghost_info",GetInfo)
 end
 
+function Ghoster:SetOffset( num )
+	self.offsetz = Vector(0,0,num or 0)
+end
+
 function Ghoster:ParentToMouse()
 	if self.Initialized then
-		local trace = util.GetPlayerTrace( LocalPlayer() )
-		trace.filter = { self.Ply, self.Parent }
-		local Pos = util.TraceLine(trace).HitPos + Vector(0,0,self.offsetz)
+		local Pos = LocalPlayer():GetEyeTraceNoCursor().HitPos + self.offsetz
 		self.Pos = Pos
 		self.Parent:SetPos( Pos )
 		self:SetNext(0)

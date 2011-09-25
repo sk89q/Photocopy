@@ -19,6 +19,17 @@
 local photocopy = require("photocopy")
 local putil = require("photocopy.util")
 
+local string = string
+local math = math
+local table = table
+local type = type 
+local tostring = tostring 
+local tonumber = tonumber 
+local Vector = Vector 
+local Angle = Angle 
+local next = next 
+
+
 CreateConVar("photocopy_pcd_serialization_rate", "2000", { FCVAR_ARCHIVE })
 CreateConVar("photocopy_pcd_deserialization_rate", "2000", { FCVAR_ARCHIVE })
 
@@ -41,6 +52,8 @@ function PCDWriter:__construct(clipboard)
         NumConstrs = table.Count(self.Clipboard:GetConstraintData()),
         OriginPos = string.format("%g,%g,%g", offset.x, offset.y, offset.z),
         Time = os.time(),
+        ZOffset = "0",
+        SaveDate = os.date("%A, %B %d, %Y at %I:%M:%S %p"),
     }
     
     self.Buffer = putil.Buffer()
@@ -50,6 +63,18 @@ function PCDWriter:__construct(clipboard)
     self.StringsIndex = {}
     
     self:SetNext(0, self._WriteHeader)
+end
+
+--- Set the ground offset of the save
+-- @param distance
+function PCDWriter:SetZOffset(distance)
+    self.Header.ZOffset = string.format("%G",distance)
+end
+
+--- Set the date of the save (automatically filled when class is created)
+-- @param stringDate
+function PCDWriter:SetSaveDate(sDate)
+    self.Header.SaveDate = sDate or os.date("%A, %B %d, %Y at %I:%M:%S %p")
 end
 
 --- Set the name of the save.
@@ -342,8 +367,9 @@ local PCDReader = putil.CreateClass(photocopy.Reader)
 
 --- Construct the PCD reader.
 -- @param data
-function PCDReader:__construct(data)
+function PCDReader:__construct(data , parsetime)
     photocopy.Reader.__construct(self, data)
+    self.parsetime = parsetime or 0.1
     
     self.DeserializationRate = GetConVar("photocopy_pcd_deserialization_rate"):GetInt()
     
@@ -434,7 +460,7 @@ end
 --- Read a table.
 -- @param data
 function PCDReader:_ReadTable()
-    self:SetNext(0.1)
+    self:SetNext(self.parsetime)
     
     local processed = 0
     
@@ -468,7 +494,7 @@ function PCDReader:_ReadTable()
         -- Get the next table
         local id, data = self.CurTableDataIter()
         if not id then
-            self:SetNext(0.1, self.ConcludeFunc)
+            self:SetNext(self.parsetime, self.ConcludeFunc)
             return
         end
         
@@ -525,13 +551,13 @@ function PCDReader:_ParseHeader()
     
     -- Parse chunks
     self:SetProgress(5)
-    self:SetNext(0.1, self._ParseChunks)
+    self:SetNext(self.parsetime, self._ParseChunks)
 end
 
 --- Parse the chunks.
 -- @param data
 function PCDReader:_ParseChunks()
-    self:SetNext(0.1)
+    self:SetNext(self.parsetime)
     
     for i = 1, 10 do -- Not yet benchmarked
         local identifier = self.ChunkData:sub(self.Offset + 1, self.Offset + 4)
@@ -553,7 +579,7 @@ function PCDReader:_ParseChunks()
             if self.ChunkIndex.info then
                 self.CurIter = self.ChunkIndex.info:gmatch("([^\1]+)\1([^\1]+)\1")
                 self:SetProgress(25)
-                self:SetNext(0.1, self._ParseInfo)
+                self:SetNext(self.parsetime, self._ParseInfo)
             else -- No info chunk?
                 self:SetError("File is missing the 'info' chunk")
             end
@@ -566,7 +592,7 @@ end
 --- Parse the info chunk.
 -- @param data
 function PCDReader:_ParseInfo()
-    self:SetNext(0.1)
+    self:SetNext(self.parsetime)
     
     local processed = 0
     
@@ -576,7 +602,7 @@ function PCDReader:_ParseInfo()
             if self.ChunkIndex.strs then
                 self.CurIter = self.ChunkIndex.strs:gmatch("([^\1]+)\1")
                 self:SetProgress(35)
-                self:SetNext(0.1, self._ParseStrings)
+                self:SetNext(self.parsetime, self._ParseStrings)
             else -- No info chunk?
                 self:SetError("File is missing the 'strs' chunk")
             end
@@ -596,7 +622,7 @@ end
 --- Parse the strs chunk.
 -- @param data
 function PCDReader:_ParseStrings()
-    self:SetNext(0.1)
+    self:SetNext(self.parsetime)
     
     local processed = 0
     
@@ -606,7 +632,7 @@ function PCDReader:_ParseStrings()
             if self.ChunkIndex.ents then
                 self:SetProgress(50)
                 self:PrepareTableRead("ents", self._ParseConstraints)
-                self:SetNext(0.1, self._ReadTable)
+                self:SetNext(self.parsetime, self._ReadTable)
             else -- No ents chunk?
                 self:SetError("File is missing the 'ents' chunk")
             end
@@ -631,7 +657,7 @@ function PCDReader:_ParseConstraints()
     if self.ChunkIndex.cons then
         self:SetProgress(75)
         self:PrepareTableRead("cons", self._Finish)
-        self:SetNext(0.1, self._ReadTable)
+        self:SetNext(self.parsetime, self._ReadTable)
     else
         self:SetError("File is missing the 'cons' chunk")
     end
@@ -655,6 +681,38 @@ function PCDReader:_Finish()
     
     self:SetProgress(100)
     self:SetNext(0, false)
+end
+
+--- Get the ground offset of the save
+function PCDReader:GetZOffset()
+    return tonumber(self.Header.ZOffset)
+end
+
+--- Get the date of the save (automatically filled when class is created)
+-- @param stringDate
+function PCDReader:GetSaveDate()
+    return self.Header.SaveDate or "Undefined"
+end
+
+--- Get the name of the save.
+function PCDReader:GetName()
+    return self.Header.Name or "Undefined"
+end
+
+--- Get the description of the save.
+function PCDReader:GetDescription()
+    return self.Header.Desc or "Undefined"
+end
+
+--- Get the name of the creator of the save.
+function PCDReader:GetCreatorName()
+    return self.Header.Creator or "Undefined"
+end
+
+--- Get the save time. The save time is automatically set to the time
+-- that an instance of this class was created.
+function PCDReader:GetSaveTime()
+    return tonumber(self.Header.Time)
 end
 
 --- Get the original position of the save. This should only be called after
