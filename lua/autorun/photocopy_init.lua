@@ -24,4 +24,8 @@ if SERVER then
 	AddCSLuaFile("includes/modules/photocopy.lua")
 	AddCSLuaFile("includes/modules/photocopy.util.lua")
 	AddCSLuaFile("photocopy/compat.lua")
+	
+	AddCSLuaFile("vgui/cc_panelui.lua")
+else
+	include("vgui/cc_panelui.lua")
 end

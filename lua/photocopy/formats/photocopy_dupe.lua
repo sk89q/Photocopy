@@ -47,12 +47,18 @@ function PCDWriter:__construct(clipboard)
     self.SerializationRate = GetConVar("photocopy_pcd_serialization_rate"):GetInt()
     
     local offset = self.Clipboard:GetOffset()
+    local tr = {}
+    tr.start = offset
+    tr.endpos = offset + Vector(0,0,-100000)
+    tr.mask = MASK_NPCSOLID_BRUSHONLY
+    local Offset = (offset - util.TraceLine( tr ).HitPos)
+
     self.Header = {
         NumEnts = table.Count(self.Clipboard:GetEntityData()),
         NumConstrs = table.Count(self.Clipboard:GetConstraintData()),
         OriginPos = string.format("%g,%g,%g", offset.x, offset.y, offset.z),
         Time = os.time(),
-        ZOffset = "0",
+        Offset = string.format("%g,%g,%g", Offset.x,Offset.y,Offset.z),
         SaveDate = os.date("%A, %B %d, %Y at %I:%M:%S %p"),
     }
     
@@ -67,8 +73,8 @@ end
 
 --- Set the ground offset of the save
 -- @param distance
-function PCDWriter:SetZOffset(distance)
-    self.Header.ZOffset = string.format("%G",distance)
+function PCDWriter:SetOffset(offset)
+    self.Header.Offset = string.format("%g,%g,%g", offset.x, offset.y, offset.z)
 end
 
 --- Set the date of the save (automatically filled when class is created)
@@ -684,8 +690,12 @@ function PCDReader:_Finish()
 end
 
 --- Get the ground offset of the save
-function PCDReader:GetZOffset()
-    return tonumber(self.Header.ZOffset)
+function PCDReader:GetOffset()
+    if self.Header.Offset then
+        local x, y, z = self.Header.Offset:match("^([^,]+),([^,]+),([^,]+)$")
+        return Vector(tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0)
+    end
+    return Vector(0, 0, 0)
 end
 
 --- Get the date of the save (automatically filled when class is created)
@@ -712,7 +722,7 @@ end
 --- Get the save time. The save time is automatically set to the time
 -- that an instance of this class was created.
 function PCDReader:GetSaveTime()
-    return tonumber(self.Header.Time)
+    return tonumber(self.Header.Time) or 0
 end
 
 --- Get the original position of the save. This should only be called after
@@ -725,6 +735,18 @@ function PCDReader:GetOriginPos()
     end
     return Vector(0, 0, 0)
 end
+
+--- Get the number of entities
+function PCDReader:GetNumEntities()
+    return tonumber(self.Header.NumEnts) or 0
+end
+
+
+--- Get the number of constraints
+function PCDReader:GetNumConstraints()
+    return tonumber(self.Header.NumConstrts) or 0
+end
+
 
 ------------------------------------------------------------
 

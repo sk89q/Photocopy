@@ -1108,17 +1108,19 @@ end
 -- the initialiser
 -- @param clipboard, a clipboard object
 function svGhoster:Initialize( clipboard , offset)
-        self.EntityData = clipboard.EntityData
+    //GetTime()
+    self.EntityData = clipboard.EntityData
 
-        self.Pos = clipboard:GetOffset()
-        self.offsetz = offset or (clipboard:GetOffset() - QuickTrace( clipboard:GetOffset() , clipboard:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos).z
-       
-        self.SendRate = GetConVar("photocopy_ghost_rate"):GetInt() / 10
-        
-        self.CurIndex = nil
+    self.Pos = clipboard:GetOffset()
+    self.offset = offset or (clipboard:GetOffset() - QuickTrace( clipboard:GetOffset() , clipboard:GetOffset() - Vector(0,0,10000) , ents.GetAll() ).HitPos)
 
-        self.GhostParent = self:GetGhostController()
-        self:SetNext(0, self.SendInitializeInfo)
+    self.SendRate = GetConVar("photocopy_ghost_rate"):GetInt() / 10
+    
+    self.CurIndex = nil
+
+    self.GhostParent = self:GetGhostController()
+    self:SetNext(0, self.SendInitializeInfo)
+    //GetTime()
 end
 
 -- Creates the ghost entity a single player's ghost parent too, bound to that player
@@ -1136,6 +1138,10 @@ function svGhoster:CreateGhostEnt()
 end
 hook.Add("PlayerDisconnected" , "photocopy_remove_ghostent" , function( ply )
     SafeRemoveEntity(ply.GhostController)
+end)
+hook.Add("PlayerDeath" , "photocopy_remove_ghostent" , function( ply )
+    SafeRemoveEntity(ply.GhostController)
+    ply.GhostController = nil
 end)
 hook.Add("PlayerSpawn" , "photocopy_create_ghostent" , function( ply )
     if !ply.GhostController then
@@ -1165,15 +1171,20 @@ end
 
 -- Sends the initializer info to start a new ghost
 function svGhoster:SendInitializeInfo()
+    //GetTime()
     umsg.Start("photocopy_ghost_init" , self.ply )
         umsg.Entity( self:GetGhostController() )
-        umsg.Float( self.offsetz )
+        umsg.Float( self.offset.x )
+        umsg.Float( self.offset.y )
+        umsg.Float( self.offset.z )
     umsg.End()
     self:SetNext(0 , self.SendGhostInfo)
+    //GetTime()
 end
 
 --ghost info
 function svGhoster:SendGhostInfo()
+    //GetTime()
     local entIndex , entData
     local pos , ang
     for i = 1 , self.SendRate do        
@@ -1203,6 +1214,7 @@ function svGhoster:SendGhostInfo()
     end
 
     self:SetNext(0)
+    //GetTime()
 end
 
 ------------------------------------------------------------
@@ -1332,7 +1344,7 @@ function clFileNetworker:Finish()
     local concat = table.concat( self.Strings , "" )
 
     local crc = CRC( concat )
-    MsgN(crc , "\t" , self.CRC)
+    
     if crc == self.CRC then
         self.OnReceived( concat , self.FileName )
     else

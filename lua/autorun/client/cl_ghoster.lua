@@ -26,9 +26,12 @@ local Ghoster = putil.CreateClass(putil.IterativeProcessor)
 
 --creates the ghoster class, used for controlling all ghosts
 function Ghoster:__construct()
+	local info = debug.getinfo(3)
+    MsgN(string.GetFileFromFilename(info.short_src)," at line ",info.currentline)
     self.Ghosts = {}
     self.Parent = nil
     self.Ply = LocalPlayer()
+    self.offset = Vector(0,0,0)
 
     self:Hook()
 end
@@ -39,7 +42,7 @@ function Ghoster:Hook()
 			self:RemoveGhosts()
 		end
 		self.Parent = um:ReadEntity()
-		self.offsetz = Vector(0,0,um:ReadFloat())
+		self.offset = Vector(um:ReadFloat(),um:ReadFloat(),um:ReadFloat())
 		self.Pos = self.Parent:GetPos()
 		self.Ang = self.Parent:GetAngles()
 
@@ -70,13 +73,15 @@ function Ghoster:Hook()
 	usermessage.Hook("photocopy_ghost_info",GetInfo)
 end
 
-function Ghoster:SetOffset( num )
-	self.offsetz = Vector(0,0,num or 0)
+function Ghoster:SetOffset( x , y , z )
+	self.offset.x = x or self.offset.x
+	self.offset.y = y or self.offset.y
+	self.offset.z = z or self.offset.z
 end
 
 function Ghoster:ParentToMouse()
 	if self.Initialized then
-		local Pos = LocalPlayer():GetEyeTraceNoCursor().HitPos + self.offsetz
+		local Pos = LocalPlayer():GetEyeTraceNoCursor().HitPos + self.offset
 		self.Pos = Pos
 		self.Parent:SetPos( Pos )
 		self:SetNext(0)
@@ -94,6 +99,7 @@ function Ghoster:RemoveGhosts()
 end
 
 function Ghoster:HideGhosts( b )
+	if b then self:Stop() else self:SetNext(0) end
 	for k , ent in pairs(self.Ghosts) do
 		if IsValid(ent) then
 			ent:SetNoDraw(b)

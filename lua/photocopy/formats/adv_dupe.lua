@@ -263,4 +263,27 @@ function AdvDupeReader:GetOriginPos()
     return Vector(0, 0, 0)
 end
 
+function AdvDupeReader:GetCreatorName()
+    return self.Header.Creator or "Undefined"
+end
+
+function AdvDupeReader:GetSaveDate()
+    return (self.Header.Date .." at ".. self.ExtraHeader.Time) or "Undefined"
+end
+
+function AdvDupeReader:GetDescription()
+    return self.Header.Description or "Undefined"
+end
+
+--- Get the number of entities
+function AdvDupeReader:GetNumEntities()
+    return tonumber(self.Header.Entities) or 0
+end
+
+
+--- Get the number of constraints
+function AdvDupeReader:GetNumConstraints()
+    return tonumber(self.Header.Constraints) or 0
+end
+
 photocopy.RegisterFormat("AdvDupe", AdvDupeReader, nil)
