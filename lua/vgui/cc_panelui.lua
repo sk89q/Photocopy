@@ -1,3 +1,4 @@
+// test
 local function getidx(tab,str)
 	for i = 1 , #tab do
 		if tab[i] == str then
