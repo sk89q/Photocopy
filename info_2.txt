@@ -1,9 +1,0 @@
-"AddonInfo"
-{
-	"name"        "Carbon Copier"
-	"version"     "1.0"
-	"author_name" "TGiFallen and sk89q"
-	"author_url"  ""
-	"info"        "A duplicator tool that doesn't suck like advanced dupe"
-	"override"    "0"
-}
