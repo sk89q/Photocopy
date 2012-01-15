@@ -2,23 +2,23 @@
 local function getidx(tab,str)
 	for i = 1 , #tab do
 		if tab[i] == str then
-			return i - 1
+			return i 
 		end
 	end
 end
 
 local function insertnode(base , name , bfolder)
 	local idx
+	local lname = string.lower(name)
 	if bfolder then
-		base.subnodes[ #base.subnodes + 1 ] = "a"..name
-		idx = getidx(base.subnodes,"a"..name)
+		base.subnodes[ #base.subnodes + 1 ] = "a"..lname
+		table.sort(base.subnodes)
+		idx = getidx(base.subnodes,"a"..lname)
 	else
-		base.subnodes[ #base.subnodes + 1 ] = "b"..name
-		idx = getidx(base.subnodes,"b"..name)
+		base.subnodes[ #base.subnodes + 1 ] = "b"..lname
+		table.sort(base.subnodes)
+		idx = getidx(base.subnodes,"b"..lname)
 	end
-	table.sort(base.subnodes)
-	PrintTable(base.subnodes)
-	MsgN(idx)
 	
 	local pNode = vgui.Create( "DTree_Node", base )
 	pNode:SetText( name )
@@ -26,7 +26,7 @@ local function insertnode(base , name , bfolder)
 	if base.GetRoot then
 		pNode:SetRoot( base:GetRoot() )
 	else
-		pNode:SetRoot( base )
+		pNode:SetRoot( base )	
 	end
 
 	pNode:SetVisible( true )
@@ -116,7 +116,7 @@ function PANEL:Init()
 
 	self.test = self.btnform:Button("PRESS ME")
 	self.test.DoClick = function()
-		insertnode(self.tree,"A TEST",false)
+		insertnode(self.tree,"B TEST",true)
 	end
 
 
@@ -264,9 +264,12 @@ function PANEL:SetupEvents()
 	local parent = self
 	
 	usermessage.Hook("cc_fileinfo_folders" , function(um)
+		
 		local amount = um:ReadShort()
 		local root = um:ReadString()
 		local base
+		MsgN(amount)
+		MsgN(root)
 
 		if self.panels[root] then
 			base = self.panels[root]
@@ -279,9 +282,10 @@ function PANEL:SetupEvents()
 
 		for i = 1 , amount do
 			folder = um:ReadString()
+			MsgN(folder)
 			local node = base:AddNode(folder)
 			node.subnodes = {}
-			base.subnodes[ #base.subnodes + 1 ] = "a"..folder
+			base.subnodes[ #base.subnodes + 1 ] = "a"..string.lower(folder)
 			node.base = base
 			self.panelnames[ node ] = folder
 			self.panels[ folder ] = node
@@ -312,8 +316,7 @@ function PANEL:SetupEvents()
 				//self.foldermap[ #self.foldermap + 1 ] = folder
 			end
 		else
-			local file
-			file = um:ReadString()
+			local file = um:ReadString()
 			local node = InsertNode(base,file,false)
 			node.Icon:SetImage( FileIcons[ extension ] or "gui/silkicons/table_edit")
 
@@ -339,7 +342,7 @@ function PANEL:SetupEvents()
 			file = um:ReadString()
 			local node = base:AddNode(file)
 			node.Icon:SetImage( FileIcons[ extension ] or "gui/silkicons/table_edit")
-			base.subnodes[ #base.subnodes + 1 ] = "b"..file
+			base.subnodes[ #base.subnodes + 1 ] = "b"..string.lower(file)
 			node.base = base
 			self.panelnames[ node ] = file
 			self.panels[ file ] = AddNode
@@ -357,7 +360,7 @@ function PANEL:SetupEvents()
 			end
 
 			if string.GetExtensionFromFilename(name) == "txt" then
-				RunConsoleCommand("cc_opendupe", name )
+				Command.Call("cc_commands_sv", "OpenDupe" , name )
 			end
 		else
 			notification.AddLegacy("Cannot open dupe (not a dupe file)", NOTIFY_ERROR, 5)

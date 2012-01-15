@@ -7,3 +7,4 @@
 	"info"        "A duplicator tool that doesn't suck like advanced dupe"
 	"override"    "0"
 }
+ 

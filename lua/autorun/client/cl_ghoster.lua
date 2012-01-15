@@ -26,8 +26,6 @@ local Ghoster = putil.CreateClass(putil.IterativeProcessor)
 
 --creates the ghoster class, used for controlling all ghosts
 function Ghoster:__construct()
-	local info = debug.getinfo(3)
-    MsgN(string.GetFileFromFilename(info.short_src)," at line ",info.currentline)
     self.Ghosts = {}
     self.Parent = nil
     self.Ply = LocalPlayer()
@@ -61,8 +59,10 @@ function Ghoster:Hook()
 
 	    pos , angle = LocalToWorld(pos, angle, self.Pos, self.Ang)
 
+	    if not util.IsValidModel(model) then MsgN("Mising Model:",model)
+		    //notification.AddLegacy("Missing model:"..model, NOTIFY_ERROR, 5) return
+	    end
 	    local ent = ClientsideModel( model )
-	    ent:SetModel( model )
 	    ent:SetAngles( angle )
 	    ent:SetPos( pos )
 	    ent:SetParent(self.Parent)

@@ -1140,8 +1140,8 @@ hook.Add("PlayerDisconnected" , "photocopy_remove_ghostent" , function( ply )
     SafeRemoveEntity(ply.GhostController)
 end)
 hook.Add("PlayerDeath" , "photocopy_remove_ghostent" , function( ply )
-    SafeRemoveEntity(ply.GhostController)
-    ply.GhostController = nil
+    //SafeRemoveEntity(ply.GhostController)
+    //ply.GhostController = nil
 end)
 hook.Add("PlayerSpawn" , "photocopy_create_ghostent" , function( ply )
     if !ply.GhostController then
@@ -1291,9 +1291,6 @@ function svFileNetworker:ReceiveFile( ply , tab )
     end
 end
 
-
-
-
 end
 if CLIENT then
 ------------------------------------------------------------
@@ -1316,7 +1313,7 @@ end
 
 -- Called when the initializing usermessage is received.
 -- @param crc a crc of the file
--- @param length of the file /250, amout of usermessages to be received.
+-- @param length of the file /250, amount of usermessages to be received.
 function clFileNetworker:InitializeTransfer( crc , filename , length )
     self.CRC = crc
     self.Length = length
@@ -1369,6 +1366,7 @@ function clFileNetworker:SetCallbacks( OnReceived , OnFailed )
 end
 
 -- Sending files
+-- @param data filename callbackcompleted
 function clFileNetworker:SendToServer( data , filename , callbackcompleted )
     if self.Receiving then notification.AddLegacy( "Cannot upload file while downloading a file", NOTIFY_ERROR , 7 ) return end
     self.Sending = true
@@ -1382,8 +1380,6 @@ function clFileNetworker:SendToServer( data , filename , callbackcompleted )
     self.SendID = datastream.StreamToServer("photocopy_serverfiletransfer"..tostring(LocalPlayer()) , { filename , CRC(data) , data}, Completed )
 end
 
-
-
 -- returns the progress on the file download
 function clFileNetworker:GetProgress()
     if self.ReceivingFile then
@@ -1392,10 +1388,9 @@ function clFileNetworker:GetProgress()
         return ((datastream.GetProgress( self.SendID ) or 0) / self.Length) * 100
     end
 end 
-
-
-
 end // end "if CLIENT then" block
+
+
 
 MsgN("Photocopy %Version$ loaded (http://www.sk89q.com/projects/photocopy/)")
 

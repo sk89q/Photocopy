@@ -22,6 +22,13 @@ local function CheckTool( tool )
 	return tool.Mode == "carbon_copier"
 end
 
+local callbacks = {}
+
+local function AddCallback(name)
+    callbacks[name] = true;
+end
+
+
 if CLIENT then
 	language.Add( "Tool_carbon_copier_name", "Carbon Copier duplicator tool" )
 	language.Add( "Tool_carbon_copier_desc", "Duplicate an entity, or a group of constrained entities" )
@@ -49,46 +56,47 @@ if CLIENT then
 			tool.clGhoster:SetOffset( nil , nil , tonumber(curvalue) )
 		end
 		
+	end)-- Offset functions
+end
+
+if SERVER then -- OpenDupe and callback functions
+	Command.Add("cc_commands_sv", function(ply, what, ...)
+		local tool = ply:GetTool()
+	    if ( not callbacks[what] and not CheckTool(tool) ) then return end
+
+	    tool[what](tool, ...)
 	end)
-end
 
+	local function onreadsuccess( self , tool )
+		//GetTime()
+		tool.clipboard = self:GetClipboard()
 
+		tool.offset = self:GetOffset()
+		tool:SetOffset( tool.offset )
+		//GetTime()
 
-local function OpenDupe( ply , cmd , args )
-	local tool = ply:GetTool()
-	if CheckTool(tool) and args[1] then
-		tool:OpenDupe( args[1] )
+		tool.svGhoster:Initialize( tool.clipboard , tool.offset )
+		tool.svGhoster:Start()
+		//GetTime()
 	end
-end
-concommand.Add("cc_opendupe" , OpenDupe )
-
-local function onreadsuccess( self , tool )
-	//GetTime()
-	tool.clipboard = self:GetClipboard()
-
-	tool.offset = self:GetOffset()
-	tool:SetOffset( tool.offset )
-	//GetTime()
-
-	tool.svGhoster:Initialize( tool.clipboard , tool.offset )
-	tool.svGhoster:Start()
-	//GetTime()
-end
-
-function TOOL:OpenDupe( path )
-	//GetTime()
-	path = self.Path .. path
-	local data = file.Read(path)
-	local reader
-	if string.sub(data,2,7) == "PCOPY" then
-		reader = "PhotocopyDupe"
-	else
-		reader = "AdvDupe"
+	function TOOL:OpenDupe( path )
+		path = self.Path .. path
+		local data = file.Read(path)
+		local reader
+		if string.sub(data,2,7) == "PCOPY" then
+			reader = "PhotocopyDupe"
+		else
+			reader = "AdvDupe"
+		end
+		local reader = photocopy.GetReader(reader)(data , 0)
+		reader:Start(onreadsuccess,nil,self)
+		//GetTime()
 	end
-	local reader = photocopy.GetReader(reader)(data , 0)
-	reader:Start(onreadsuccess,nil,self)
-	//GetTime()
+	AddCallback("OpenDupe")
 end
+
+
+
 
 function TOOL:GroundOffset( clipboard )
 	local plytr = self:GetOwner():GetEyeTraceNoCursor()
@@ -113,16 +121,8 @@ end
 
 
 function TOOL:SendDupeFileInfo()
-	
 	local ply = self:GetOwner()
-	local id = ply:SteamID():gsub(":","_")
-	local path
-	if SinglePlayer() then 
-		path = "photocopy/localplayer/"
-	else
-		path = "photocopy/"..id.."/"
-	end
-	self.Path = path
+
 
 	local root = "base"
 	local function recursefind( dir , folders , files )
@@ -154,11 +154,17 @@ function TOOL:SendDupeFileInfo()
 		end
 	end
 
-	file.TFind("data/"..path .. "*" , recursefind)
+	file.TFind("data/"..self.Path .. "*" , recursefind)
 end
 
 
 function TOOL:Initialize()
+	local id = self:GetOwner():SteamID():gsub(":","_")
+	if SinglePlayer() then 
+		self.Path = "photocopy/localplayer/"
+	else
+		self.Path = "photocopy/"..id.."/"
+	end
 	if CLIENT then
 		self.LastThink = CurTime()
 
@@ -175,6 +181,8 @@ function TOOL:Initialize()
 		self.svNetworker = photocopy.svFileNetworker()
 
 		self:SendDupeFileInfo()
+
+		//self:LoadCommands()
 	end
 end
 
@@ -206,9 +214,9 @@ function TOOL:RightClick( trace )
 	self.clipboard:Copy(ent)
 
 
-	self:SetOffset( self.clipboard )
+	self:GroundOffset(self.clipboard)
 	self.svGhoster:Initialize( self.clipboard , self.offset )
-	self.svGhoster:Start()
+	self.svGhoster:Start()	
 	return true
 end
 
