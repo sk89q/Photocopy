@@ -1,5 +1,5 @@
 [Photocopy](https://github.com/TGiFallen/photocopy)
-=========
+==========
 
 Photocopy is an advanced, asynchronous, and extensible contraption duplicator
 and saver library for Garry's Mod.
